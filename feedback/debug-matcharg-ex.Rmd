@@ -1,0 +1,19 @@
+## *match*? ARRRGH!
+
+In dieser Aufgabe geht es darum fremden, einigermaßen komplexen Code zu lesen und zu verstehen.
+
+Schauen Sie sich die Hilfe und den Quellcode für `match.arg()` an und kopieren Sie den Quellcode in ihre Lösung.  
+Kommentierten Quellcode für `match.arg()` und andere `base`-Funktionen finden Sie [hier](https://github.com/wch/r-source/blob/ce1ceeddd6ff6a22a76d68a83fc15a50e220e204/src/library/base/R/match.R#L41).
+
+Benutzen Sie den interaktiven Debugger via
+```{r, match_arg_dbg, eval = FALSE}
+make_something <- function(something = c("mess", "cake", "hyuuge mistake")) {
+  something <- match.arg(something)
+  message("I made a", something, ".\n")
+}
+debugonce(match.arg)
+make_something()
+```
+um Zeile für Zeile durch `match.arg()` zu gehen. Finden Sie heraus was vor sich geht. Dafür müssen Sie wahrscheinlich `make_something()` auch mal mit anderen Argumenten aufrufen. Schreiben Sie für jede (nicht völlig triviale)  Zeile in `match.arg()` einen Kommentar in ihre Kopie des `match.arg()`-Codes der erklärt wie & warum was passiert.
+
+*Hinweis:* Benutzen Sie hier `debugonce()`, nicht `debug()`, vor allem wenn Sie eine andere Beispielfunktion als die obige benutzen -- sehr viele Funktionen rufen intern `match.arg()` auf und wir wollen nicht dass der Debugger bei jedem Aufruf von `match.arg()` aus einer Unterfunktion heraus in diesen neuen Aufruf springt...  
