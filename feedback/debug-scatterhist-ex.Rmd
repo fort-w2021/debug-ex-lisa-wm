@@ -1,0 +1,27 @@
+Benutzen Sie für die folgenden Aufgaben als Ausgangsbasis den Code in `scatterhist-start.R`.
+Lassen Sie zunächst mal den folgenden Code laufen:
+
+```{r, load_scatterhist, echo=TRUE}
+source("scatterhist-start.R")
+set.seed(20141103)
+x <- cbind(x1 = rexp(100), x2 = rnorm(100))
+```
+```{r, fake_plot, echo=TRUE, eval=FALSE}
+plot_scatterhist(x)
+```
+
+a) Benutzen Sie `traceback()` um rauszukriegen warum `plot_scatterhist(trees)` nicht funktioniert. Beschreiben Sie das Problem.
+b) Benutzen Sie `debug()` um bei dem Aufruf `plot_scatterhist(x)` Zeile für Zeile durch den Code zu gehen. Quadrieren Sie die Daten *nachdem* der Scatterplot gezeichnet wurde aber *bevor* die Histogramme gezeichnet werden. Das sollte dann -- völlig sinnloserweise -- so wie die untenstehende Grafik aussehen:
+
+```{r, square_debug, echo=FALSE, message=FALSE, fig.height=3, fig.width=5, results='hide'}
+trace(plot_scatterhist, at = 5, quote({
+  x <- x^2
+}))
+plot_scatterhist(x)
+untrace(plot_scatterhist)
+```
+
+c) Setzen Sie einen Breakpoint in `plot_scatterhist()` so, dass sie den interaktiven Debugger genau vor dem ersten Aufruf von `plot()` in `plot_scatterhist()` betreten. 
+
+*Hinweis*: Hier nur Prosa-Antworten gefragt, sie müssen Ihre Lösung nicht mit Programmcode dokumentieren -- z.B. `traceback()` wird in einem .Rmd file nicht den selben Output produzieren wie in einem normalen R-Skript...
+
