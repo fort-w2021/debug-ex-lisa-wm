@@ -1,0 +1,121 @@
+<!--
+Knitten Sie dieses File in RStudio zur besseren Lesbarkeit, bitte...
+-->
+
+```{r, child = "debug-matcharg-ex.Rmd"}
+```
+
+----------------------------------------------------
+
+### Lösung:
+
+Der erste Schritt ist sehr aufmerksam die Hilfe zu `match.arg` und die Beispiele dort zu studieren.  
+Um in den Debugger zu kommen dann eben
+```{r, match_arg_dbg, eval = FALSE}
+```
+
+Original-Kommentare in Quellcode für `base`-Paket:
+```{r, match_arg_1, eval = FALSE}
+match.arg <- function (arg, choices, several.ok = FALSE)
+{
+  if (missing(choices)) {
+    formal.args <- formals(sys.function(sysP <- sys.parent()))
+        choices <- eval(formal.args[[as.character(substitute(arg))]], 
+                        envir = sys.frame(sysP))
+  }
+  if (is.null(arg)) return(choices[1L])
+  else if(!is.character(arg))
+    stop("'arg' must be NULL or a character vector")
+  if (!several.ok) { # most important (default) case:
+    ## the arg can be the whole of choices as a default argument.
+    if(identical(arg, choices)) return(arg[1L])
+    if(length(arg) > 1L) stop("'arg' must be of length 1")
+  } else if(length(arg) == 0L) stop("'arg' must be of length >= 1")
+  
+  ## handle each element of arg separately
+  i <- pmatch(arg, choices, nomatch = 0L, duplicates.ok = TRUE)
+  if (all(i == 0L))
+    stop(gettextf("'arg' should be one of %s",
+                  paste(dQuote(choices), collapse = ", ")),
+         domain = NA)
+  i <- i[i > 0L]
+  if (!several.ok && length(i) > 1)
+    stop("there is more than one match in 'match.arg'")
+  choices[i]
+}
+```
+
+Kommentierter Code -- Kommentare beziehen sich jeweils auf die nächste/n Zeile/n:
+```{r, match_arg_2, eval = FALSE}
+# <arg> ist das von usern übergebene argument, <choices> die dafür zulässigen
+# werte (character-strings).
+match.arg <- function(arg, choices, several.ok = FALSE) {
+  # erster if-block: wenn keine <choices> (=  Optionen für <arg>) angegeben,
+  # lese Optionen aus den "formals" der Funktion aus, von der "match.arg"
+  # aufgerufen wurde (also: *dynamic scoping* statt *lexical scoping*!!)
+  if (missing(choices)) {
+    # sys.parent() gibt zurück welche Nummer die Elternumgebung des aktuellen
+    # evaluation frames hat (also: Position der Funktion, die match.arg()
+    # aufgerufen hat, im aktuellen *call stack*)
+    # sys.function(<nummer>) gibt die Funktionsdefinition zurück die an der
+    # <nummer>-sten Position im *call stack* steht -- deren "formals" lesen wir aus:
+    formal.args <- formals(sys.function(sysP <- sys.parent()))
+    # choices = mögliche optionen für <arg> in der match.arg aufrufenden
+    # Funktion. as.character(substitute(arg)) ersetzt (s. ?substitute) zuerst
+    # <arg> durch den Ausdruck der an <arg> übergeben wurde ohne diesen
+    # auszuwerten, und wandelt diesen dann in einen character-string um damit
+    # man damit auf das entsprechende Listenelement in <formal.args> zugreifen
+    # kann. Das wird dann noch mal mit "eval" in dem execution frame der
+    # aufrufenden funktion ("sys.frame(sysP)") ausgewertet, falls dieses
+    # listenelement ein nur dort definiertes symbol ist und kein expliziter
+    # vektor von alternativen.
+    choices <- eval(formal.args[[as.character(substitute(arg))]],
+                    envir = sys.frame(sysP))
+  }
+  
+  if (is.null(arg)) {
+    # wenn <arg> leer ist nehmen wir das erste der defaults und sind fertig.
+    # --> early exit für wichtigen Default
+    return(choices[1L])
+  } else if (!is.character(arg)) {
+    stop("'arg' must be NULL or a character vector")
+  }
+  
+  if (!several.ok) {
+    # wenn weder <choices> im Aufruf von match.arg definiert wurde, noch <arg>
+    # im Aufruf der Funktion die match.arg aufgerufen hat, definiert wurde,
+    # dann ist <arg> das selbe wie <choices>, da <choices> ja eben die formals
+    # für <arg> sind (s.o.) -- also nehmen wir davon das erste und sind fertig
+    # (wichtigster Default!).
+    if (identical(arg, choices)) return(arg[1L])
+    if (length(arg) > 1L) stop("'arg' must be of length 1")
+  } else if (length(arg) == 0L) stop("'arg' must be of length >= 1")
+  
+  # pmatch() sucht nach partiellen Übereinstimmungen zwischen <arg> und
+  # <choices> und gibt einen Vektor mit der Länge von <arg> zurück der 0 enthält
+  # wenn das jeweilige Element in <arg> KEINEN Eintrag in <choices> oder MEHRERE
+  # Einträge in <choices> matcht, und sonst den Index des matchenden Eintrags in
+  # <choices>, s. ?pmatch
+  i <- pmatch(arg, choices, nomatch = 0L, duplicates.ok = TRUE)
+  
+  # kein match oder uneindeutig --> Fehler
+  if (all(i == 0L)) {
+    # gettextf sucht die Übersetzung des Fehlermeldung-Strings in die in den
+    # Systemoptionen eingestellte Sprache
+    stop(gettextf("'arg' should be one of %s", paste(dQuote(choices),
+                                                     collapse = ", "
+    )), domain = NA)
+  }
+  
+  # benutze nur erfolgreiche matches:
+  i <- i[i > 0L]
+  
+  # dead code? 
+  # several.ok false -> arg hat Länge 1 -> pmatch returniert nur 1 wert 
+  #   --> length(i) kann hier niemals > 1 sein....
+  if (!several.ok && length(i) > 1) {
+    stop("there is more than one match in 'match.arg'")
+  }
+  choices[i]
+}
+```
