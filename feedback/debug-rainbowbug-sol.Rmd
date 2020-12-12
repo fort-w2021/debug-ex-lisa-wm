@@ -1,0 +1,132 @@
+<!--
+Knitten Sie dieses File in RStudio zur besseren Lesbarkeit, bitte...
+-->
+
+```{r, child = "debug-rainbowbug-ex.Rmd"}
+```
+
+----------------------------------------------------
+
+### Lösung:
+
+a) 
+
+Lokalisierung: erst mal mit `traceback()`:
+```{r, eval=FALSE} 
+traceback()
+```
+```
+## 4: as.graphicsAnnot(legend)
+## 3: legend(legendpos, c(colnames(data$y)[outlier]), col = rainbow(n), 
+##        lty = 1, ncol = ncol, ...)
+## 2: fbag(data, factor, xlab = xlab, ylab = ylab, plotlegend = plotlegend, 
+##        legendpos = legendpos, ncol = ncol, projmethod = projmethod, 
+##        ...)
+## 1: fboxplot(x_fds)
+```
+Also: `fboxplot()` ruft `fbag()` ruft `legend()` ruft `as.graphicsAnnot()` auf, aber `as.graphicsAnnot()` bekommt von `legend()` offensichtlich kein `legend`-Argument übergeben -- siehe Fehlermeldung. Das heisst der Fehler passiert wohl schon in `legend()`, oder sogar noch früher. 
+
+Mit `options(error=recover, deparse.max.lines=5)` können wir direkt in die Funktionsauswertung springen und uns mit dem interaktiven Debugger dort umsehen:
+```{r, eval=FALSE} 
+options(error = recover, deparse.max.lines = 5)
+fboxplot(x_fds)
+```
+```
+## Error in as.graphicsAnnot(legend) : 
+##   argument "legend" is missing, with no default
+## 
+## Enter a frame number, or 0 to exit   
+## 
+## 1: fboxplot(x_fds)
+## 2: fbag(data, factor, xlab = xlab, ylab = ylab, plotlegend = plotlegend, legendpos = legendpos, ncol = 
+## 3: legend(legendpos, c(colnames(data$y)[outlier]), col = rainbow(n), lty = 1, ncol = ncol, ...)
+## 4: as.graphicsAnnot(legend)
+```
+Wir springen in den Aufruf von `legend()` um nachzusehen ob/wie dort die Variable `legend` definiert ist die bei `as.graphicsAnnot(legend)` zu fehlen scheint:
+```
+## Selection: 3
+## Called from: legend(legendpos, c(colnames(data$y)[outlier]), col = rainbow(n), 
+##                             lty = 1, ncol = ncol, ...)
+```
+Jetzt sind wir im interaktiven Debugger und können uns umschauen:
+```
+## Browse[1]> ls.str()
+## adj :  num [1:2] 0 0.5
+## angle :  num 45
+[...]
+## inset :  num 0
+## legend : <missing>
+## lty :  num 1
+```
+(In RStudio können Sie statt `ls.str()` zu tippen auch einfach in das "Environment"-Panel schauen...)  
+Aha, also die `legend`-Variable ist hier gar nicht definiert: `<missing>`. Zeit sich die Hilfe für `legend()` anzusehen. Dort lesen wir dass `legend` das dritte Argument von
+`legend()` ist, bzw. das zweite Argument ohne default-Wert. 
+Der Aufruf von `legend()` hier ist 
+```{r, eval=FALSE} 
+legend(legendpos, c(colnames(data$y)[outlier]),
+  col = rainbow(n), lty = 1,
+  ncol = ncol, ...
+)
+```
+das heisst nach den Regeln für das *argument matching* ist 
+`c(colnames(data$y)[outlier])` hier der Wert, der für das `legend`-Argument übergeben wird -- sieht so aus als würde `fboxplot` versuchen die farbig markierten Ausreisser im Datensatz mit den Spaltennamen der übergebenen Daten zu labeln.
+Springen wir also in die Funktion `fbag()` die `legend()` aufruft und schauen nach was bei der Übergabe des `legend`-Arguments schiefläuft:
+```{r, eval=FALSE}  
+fboxplot(x_fds)
+```
+```
+## Error in as.graphicsAnnot(legend) : 
+##   argument "legend" is missing, with no default
+## 
+## Enter a frame number, or 0 to exit   
+## 
+## 1: fboxplot(x_fds)
+## 2: fbag(data, factor, xlab = xlab, ylab = ylab, plotlegend = plotlegend, legendpos = legendpos, ncol = 
+## 3: legend(legendpos, c(colnames(data$y)[outlier]), col = rainbow(n), lty = 1, ncol = ncol, ...)
+## 4: as.graphicsAnnot(legend)
+## Selection: 2
+## Called from: fbag(data, factor, xlab = xlab, ylab = ylab, plotlegend = plotlegend, 
+##    legendpos = legendpos, ncol = ncol, projmethod = projmethod, 
+##    ...)
+```
+Was wird hier mit `c(colnames(data$y)[outlier])` übergeben?
+```
+## Browse[1]> c(colnames(data$y)[outlier])
+## NULL
+```
+AHA! Das ist also das Problem und deswegen ist `legend` im Aufruf von `legend()` einfach `<missing>`: Die übergebene Variable hat den Wert `NULL`. 
+Warum ist es `NULL`? Liegt es an `outlier` oder an `colnames(data$y)`?
+```
+## Browse[1]> outlier
+## [1] 40 53 68
+## Browse[1]> colnames(data$y)
+## NULL
+## Browse[1]> str(data)
+## List of 4
+## $ x    : num [1:100] 0 0.0101 0.0202 0.0303 0.0404 ...
+## $ y    : num [1:100, 1:80] 0.3319 -0.1903 0.2472 0.0283 0.0171 ...
+## $ xname: chr "t_grid"
+## $ yname: chr "x"
+## - attr(*, "class")= chr "fds"
+```
+Das ist also das Problem: Das von uns an `fboxplot` übergebene `data`-Argument (also: `x_fds`) hat keine Spaltennamen für die Funktionsauswertungen (die in der `y`-Komponente des `fds`-Objekts abgespeichert sind) aber `fboxplot` geht ohne Überprüfung davon aus dass diese Spaltennamen vorhanden sind... 
+Die Warnungen, die die Funktion vor dem Fehler ausgibt, deuten ja auch schon auf dieses Problem hin.
+
+Um den Fehler zu vermeiden gibt es 2 Möglichkeiten: Wir rufen `fboxplot` mit `plotlegend = FALSE` auf um gar nicht erst zu versuchen die Legende zu zeichnen oder wir definieren Spaltennamen für `x` und erzeugen `x_fds` nochmal neu mit diesem `x` damit die Legende gezeichnet werden kann:
+```{r, fbox_fixed, error=TRUE, fig.width=13, fig.height=5}
+layout(t(1:2))
+fboxplot(x_fds, plotlegend = FALSE)
+
+colnames(x) <- 1:ncol(x)
+x_fds <- fds(x = t_grid, y = x)
+fboxplot(x_fds)
+```
+
+b)
+
+Das Problem ist wie so oft mangelhaftes *input checking*, hier von `fboxplot()`, und zwar in dem Sinn dass der Code implizit voraussetzt dass die übergebenen Daten Spaltennamen haben.  
+Korrekturmöglichkeiten:
+
+* Überprüfe ob die Spaltennamen existieren bevor `legend()` aufgerufen wird, z.B. mit `is.null(colnames(data$y))`.  Wenn es keine Spaltennamen gibt werden Sie einfach als `seq_len(ncol(data$y))` definiert und dann wird `legend()` aufgerufen.
+* Am Anfang der Funktion wird überprüft ob die Spaltennamen existieren. Wenn nicht wird `plotlegend` auf `FALSE` gesetzt (evtl. mit einer `warning`) damit `legend()` gar nicht erst aufgerufen wird.
+* **Sauberste Lösung**: `fds()` überprüft ob Spaltennamen vorhanden sind und legt sie an falls nicht. Dann können **alle** Funktionen die `fds`-Objekte verarbeiten sich darauf verlassen dass die Spaltennamen existieren.
