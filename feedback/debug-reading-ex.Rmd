@@ -1,0 +1,18 @@
+### Lektüre: MREs oder "Wie man aussichtsreich & zielgerichtet um Hilfe bittet"
+
+Lesen Sie [hier](http://adv-r.had.co.nz/Reproducibility.html) und [hier](http://stackoverflow.com/a/5963610/295025) was man beachten sollte wenn man auf Mailinglisten, bei Paketautoren oder auf Q&A-Seiten wie StackOverflow nach Unterstützung bei Programmierproblemen und Bugs sucht.  
+Das [`reprex`](https://github.com/tidyverse/reprex/blob/master/README.md)-Paket ist auch einen Blick wert: es macht das  Teilen solcher reproduzierbarer Beispiele in gut lesbarer Form einigermaßen reibungslos.
+
+-----
+
+### Lektüre: Debugging with Wickham
+
+Lesen Sie das Kapitel ["Debugging, condition handling, and defensive programming"](http://adv-r.had.co.nz/Exceptions-Debugging.html) 
+aus Wickham's (altem) *Advanced R*-Buch. 
+Die Abschnitte zu `withCallingHandlers()` und *Custom signal classes* können Sie getrost überspringen.
+
+-----
+
+### Videotutorial: Debugging mit RStudio
+
+Informieren Sie sich [hier](https://support.rstudio.com/hc/en-us/articles/205612627-Debugging-with-RStudio) und [hier (Video, 11min)](https://vimeo.com/99375765) darüber welche Werkzeuge RStudio enthält um den Debugging-Prozess zu unterstützen. Souveräne Beherrschung derselben wird in den folgenden Aufgaben und darüber hinaus in ihrer weiteren Laufbahn als R-Expertinnen und -Experten üüüberstaust hilfreich sein. 
