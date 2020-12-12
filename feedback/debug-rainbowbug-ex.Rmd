@@ -1,0 +1,33 @@
+## Rainbow?  ... more like rain*bug*!
+
+Nachfolgender Code erzeugt eine `n_grid`$\times$`n`-Matrix `x` mit Auswertungen von 
+$n$ zufälligen Funktionen $x_i(t)$ auf je `n_grid` Gitterpunkten zwischen 0 und 1 (`t_grid`):
+```{r, fbox_prep, message=FALSE}
+library(rainbow)
+set.seed(121212)
+n <- 80
+n_grid <- 100
+t_grid <- seq(0, 1, l = n_grid)
+x <- replicate(
+  n,
+  dbeta(t_grid, shape1 = runif(1, 3, 4), shape2 = runif(1, 2, 7)) +
+    rt(n_grid, df = 5) / 10
+)
+```
+Das linke Panel in untenstehender Grafik zeigt die Realisierungen der einzelnen $x_i(t), \; i=1,\dots,n$.
+
+Das Paket `rainbow` [[pdf]](cran.r-project.org/web/packages/rainbow/vignettes/rainbow.pdf) stellt Plotfunktionen für solche [funktionalen Daten](http://en.wikipedia.org/wiki/Functional_data_analysis) zur Verfügung,
+unter anderem eine Art Boxplot für funktionale Daten mit `fboxplot()`. 
+Diese Funktion produziert hier zwar den korrekten Plot (rechtes Panel in der folgenden Grafik), aber auch eine Fehlermeldung:
+```{r, fbox_error, error=TRUE, message=FALSE, fig.width=13, fig.height=5}
+# fds creates "functional data"-objects, see ?fds and ?fboxplot
+x_fds <- fds(x = t_grid, y = x)
+
+layout(t(1:2))
+matplot(t_grid, x, lty = 1, col = rgb(0, 0, 0, .2), type = "l", lwd = 1.5)
+fboxplot(x_fds)
+```
+
+a) Lokalisieren Sie wo im Code der Fehler auftritt (also: *Auslöser* des Fehlers), ermitteln Sie die *Ursache* des Fehlers (nicht das selbe!). Was müssten Sie im obigen Code-Snippet ändern, damit der Fehler nicht mehr auftritt?  
+Benutzen Sie den interaktiven Debugger und die anderen Debugging-Werkzeuge die Sie kennen um diese Aufgabe zu lösen.
+b) Wie könnte der Code im `rainbow`-Paket verbessert werden um den obigen Fehler zu vermeiden? (keine Implementation gefragt, Pseudo-Code / Lösungsskizze genügt...)
