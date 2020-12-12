@@ -1,0 +1,92 @@
+<!--
+Knitten Sie dieses File in RStudio zur besseren Lesbarkeit, bitte...
+-->
+
+```{r, child = "debug-scatterhist-ex.Rmd"}
+```
+
+----------------------------------------------------
+
+### Lösung:
+
+a) 
+
+```r
+plot_scatterhist(trees)
+```
+```
+## Error in plot.default(...) : 
+##  formal argument "xlab" matched by multiple actual arguments
+```
+```r
+traceback()
+```
+```
+8: plot.default(...)
+7: plot(...)
+6: localPlot(x[, j], x[, i], xlab = "", ylab = "", axes = FALSE, 
+       type = "n", ..., log = l)
+5: pairs.default(data.matrix(x), ...)
+4: pairs(data.matrix(x), ...)
+3: plot.data.frame(x, xlab = "", ylab = "", ...)
+2: plot(x, xlab = "", ylab = "", ...) at scatterhist-start.R#5
+1: plot_scatterhist(trees)
+```
+
+Also ruft eine spezielle `plot()`-Methode (S3!) für `data.frame`s eine Funktion `pairs()` auf -- was macht die?
+```{r, debugscatterhist_pairs, error=TRUE, fig.height=3, fig.width=5}
+plot(trees)
+plot(trees, xlab = "")
+```
+Ok, also ist das Problem dass die `plot()`-Methode für `data.frame` die von uns übergebenen `xlab`/`ylab`-Argumente nicht akzeptiert weil sie eigene `xlab`/`ylab` definiert bzw. für `data.frames` mit $>2$ Spalten (s. `getAnywhere("plot.data.frame")`) `pairs()` aufruft. Die von uns übergebenen Argumente landen in den `...`-Argumenten, und schlussendlich bekommt die Funktion `plot.default()` die von `pairs()` aufgerufen wird dann eben mehrere `xlab`-Argumente.
+
+Außerdem produziert `plot.data.frame` bzw. `pairs` nicht den Scatterplot den wir hier erwartet haben -- s. Grafik oben. Details bitte nachlesen unter `?plot.data.frame` bzw. `?pairs` bzw. im Quellcode mit `getAnywhere("plot.data.frame")`.
+
+b)
+
+Entweder mit `debugonce` oder mit `debug`, dann muss man den Debugger aber mit `undebug` auch wieder ausschalten...
+```{r, debugscatterhist_debugger, eval=FALSE}
+debugonce(plot_scatterhist)
+scatterhist(x)
+# .. mach Dein Ding:
+# - <n> oder <Enter> um zur nächsten Zeile zu steppen
+# - Überblick über lokale Variablen mit ls.str()
+# - <x <- x^2> eingeben nachdem der Befehl <plot(x, xlab = "", ylab = "", ...)>
+#     ausgeführt wurde.
+```
+
+c)
+
+Wenn Sie in der Aufgabe zuvor `debug` benutzt hatten sollten Sie erstmal mit `undebug(plot_scatterhist)` den Debugger ausschalten. 
+
+Dann haben Sie folgende Optionen: 
+
+* in RStudio öffnen Sie `scatterhist_start.R` und klicken auf den leeren grauen Bereich ganz links neben dem Code. Dort sollte ein roter Punkt erscheinen, das ist ihr *breakpoint*, an dem `browser()`, also der interaktive Debugger, aufgerufen wird. Der *breakpoint* wird aktiv sobald sie `scatterhist_start.R` mit `source()` neu laden. Das ist das selbe alswiewenn Sie an diese Stelle im Code `browser()` schreiben täten und dann das Skript mit `source()` nochmal lädeten.
+* obige Methode funktioniert nur mit (eigenem) Code für den die Quelldatei vorliegt. Wenn das nicht der Fall ist muss man `trace()` manuell benutzen. Auch hier gibt es wiederum 2 Möglichkeiten, je nachdem ob Sie interaktiv mit der Funktion arbeiten oder ob der `trace`-Code programmatisch injiziert werden soll. Im interaktiven Fall rufen wir `trace(plot_scatterhist, edit=TRUE)` auf und nehmen in dem neu geöffneten Fenster die gewünschten Änderungen an `plot_scatterhist()` vor. Um den `trace`-Code programmatisch zu injizieren betrachten wir zunächst 
+```{r, debugscatterhist_body}
+as.list(body(plot_scatterhist))
+```
+um nachzuvollziehen welcher Schritt im Rumpf der Funktion welchen Befehlen entspricht .^[... das ist hier latürnich pippi-einfach weil die Funktion so simpel ist, aber sehen Sie sich z.B. mal 
+`as.list(body(lm))`, `as.list(body(lm)[[18]])`, `as.list(body(lm)[[18]][[3]])` an um zu verstehen wie das bei komplexeren Funktionen aussehen kann wo man Code in einen tief verschachtelten Aufruf injizieren muss/möchte...] Der Output oben zeigt dass wir den Breakpoint mit dem Aufruf von `browser()` vor Schritt 4 setzen müssen, also:
+```{r, debugscatterhist_trace4}
+trace(plot_scatterhist, at = 4, tracer = browser)
+## check ob's passt:
+body(plot_scatterhist)
+```
+... passt.
+
+Um komplexeren Code zu injizieren der mehrere Ausdrücke umfasst muss man 
+`quote({ })` benutzen -- z.B.
+```{r, debugscatterhist_quote, fig.height=3, fig.width=5}
+trace(plot_scatterhist,
+  at = 4,
+  tracer = quote({
+    if (is.data.frame(x)) {
+      message("Do you have any idea what you're doing? I don't think so...")
+      message("I'll go ahead and just use the first two columns here, then.")
+      x <- cbind(x[, 1], x[, 2])
+    }
+  })
+)
+plot_scatterhist(trees)
+```
